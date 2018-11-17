@@ -1,0 +1,91 @@
+assets:
+  v1:
+    - github:
+        dest: ./base
+        repo: jaegertracing/jaeger-kubernetes
+        path: jaeger-production-template.yml
+        proxy: false
+        strip_path: true
+    - github:
+        dest: ./base
+        repo: jaegertracing/jaeger-kubernetes
+        path: production/cassandra.yml
+        proxy: false
+        strip_path: true
+        when: '{{repl ConfigOptionEquals "storage_provider" "cassandra"}}'
+    - github:
+        dest: ./base
+        repo: jaegertracing/jaeger-kubernetes
+        path: production/configmap.yml
+        proxy: false
+        strip_path: true
+        when: '{{repl ConfigOptionEquals "storage_provider" "cassandra"}}'
+    - github:
+        dest: ./base
+        repo: jaegertracing/jaeger-kubernetes
+        path: production-elasticsearch/elasticsearch.yml
+        proxy: false
+        strip_path: true
+        when: '{{repl ConfigOptionEquals "storage_provider" "elasticsearch"}}'
+    - github:
+        dest: ./base
+        repo: jaegertracing/jaeger-kubernetes
+        path: production-elasticsearch/configmap.yml
+        proxy: false
+        strip_path: true
+        when: '{{repl ConfigOptionEquals "storage_provider" "elasticsearch"}}'
+
+config:
+  v1:
+    - name: storage
+      title: Storage
+      items:
+        - name: storage_provider
+          title: Storage Provider
+          type: select_one
+          default: cassandra
+          items:
+            - name: cassandra
+              title: Cassandra
+            - name: elasticsearch
+              title: Elasticsearch
+
+lifecycle:
+  v1:
+    - message:
+        contents: >-
+          Deploy a production-grade version of Jaeger to Kubernetes.
+
+    - config:
+        invalidates: ["render"]
+
+    - render:
+        requires: ["config"]
+        root: .
+
+    - kustomizeIntro: {}
+
+    - kustomize:
+        requires: ["render"]
+        base: installer/base
+        overlay: overlays/ship
+        dest: jaeger.yaml
+
+    - message:
+        id: outro
+        contents: >-
+          ## Deploy
+
+          Jaeger is ready to be deployed. To deploy it now, you can run:
+
+            kubectl apply -f jaeger.yaml
+
+          ## Updates
+
+          Ship can now watch for any changes made to Jaeger, and can download them, apply your patches, and create an updated version of the rendered.yaml. To watch for updates:
+
+            ship watch && ship update
+
+          Running this command in the current directory will automate the process of downloading and preparing updates.
+
+          For continuous notification and preparation of application updates via email, webhook or automated pull request, create a free account at https://ship.replicated.com.
